@@ -1,6 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 
+
+using System.ComponentModel;
+using System.Text;
+using Newtonsoft.Json;
+
 Console.WriteLine("WorkItem Creator - Console Application - Practice");
 System.Console.WriteLine("Would you like to add a work item to your azure directory?");
 System.Console.WriteLine("Enter (y) for Yes, (n) for No");
@@ -41,11 +46,12 @@ if (String.IsNullOrEmpty(title))
     title = description.ToUpper();
 }
 
-string finalItem = ReviewStory(title, description, reference);
+await ReviewStory(title, description, reference);
 
-SubmitItem(finalItem);
 
-string ReviewStory(string title, string description, string reference)
+
+
+async Task ReviewStory(string title, string description, string reference)
 {
     char c = description[0];
     if (char.IsLetter(c) && c != char.ToUpper(c))
@@ -63,8 +69,6 @@ string ReviewStory(string title, string description, string reference)
     {
         Environment.Exit(1);
     }
-
-    string checkAgain = "";
     string[] finalItem;
 
     if (suboredit == "edit")
@@ -73,10 +77,18 @@ string ReviewStory(string title, string description, string reference)
         title = finalItem[0];
         description = finalItem[1];
         reference = finalItem[2];
-        checkAgain = ReviewStory(title, description, reference);
+        await ReviewStory(title, description, reference);
     }
+    var workItemString = $"{title.ToUpper()}: {description} - ref: {reference}";
+    string workItemDescription = $"{description} - Ref: {reference}.";
+    WorkItem workItem = new WorkItem
+    {
+        Email = "brett@myemail.com",
+        Title = title,
+        Description = workItemDescription
+    };
 
-    return $"{title.ToUpper()}: {description} - ref: {reference}";
+    await SubmitWorkItem(workItem);
 }
 
 bool ValidateSubmission(string? x, out string suboredit)
@@ -214,7 +226,41 @@ string EditInput(string input)
     return output;
 }
 
-void SubmitItem(string finalItem)
+async Task SubmitWorkItem(WorkItem workItem)
 {
-    System.Console.WriteLine(finalItem);
+    string uri = "https://localhost:7088/create_work_item";
+
+    using (HttpClient client = new HttpClient())
+    {
+        try
+        {
+            var response = await client.PostAsync(
+            uri, new StringContent(JsonConvert.SerializeObject(workItem), Encoding.UTF8, "application/json"));
+
+            if (response.IsSuccessStatusCode)
+            {
+                System.Console.WriteLine("Work Item has been created!");
+            }
+            else
+            {
+                System.Console.WriteLine("Submission has failed.");
+            }
+        }
+        catch (System.Exception Ex)
+        {
+            System.Console.WriteLine(Ex);
+        }
+
+
+
+    }
+    Console.ReadLine();
+}
+
+
+public class WorkItem
+{
+    public string? Email { get; set; }
+    public string? Title { get; set; }
+    public string? Description { get; set; }
 }
