@@ -1,8 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-
-
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -36,6 +32,15 @@ if (String.IsNullOrEmpty(description))
 System.Console.WriteLine("If applicable, please add drawing reference for where issue occurs");
 string? reference = Console.ReadLine();
 
+System.Console.WriteLine("Please assign a priority value (1, 2, 3 or 4)");
+System.Console.WriteLine("Any entry outside of '1' '2' '3' or '4' will result in a Priority level of '3'");
+string? priority = Console.ReadLine();
+
+if (String.IsNullOrEmpty(priority))
+{
+    priority = "3";
+}
+
 if (String.IsNullOrEmpty(reference))
 {
     reference = "n/a";
@@ -43,15 +48,15 @@ if (String.IsNullOrEmpty(reference))
 
 if (String.IsNullOrEmpty(title))
 {
-    title = description.ToUpper();
+    title = description;
 }
 
-await ReviewStory(title, description, reference);
+await ReviewStory(title, description, reference, priority);
 
 
-
-
-async Task ReviewStory(string title, string description, string reference)
+//// Review the Input and Get it Ready For Submission
+///
+async Task ReviewStory(string title, string description, string reference, string priority)
 {
     char c = description[0];
     if (char.IsLetter(c) && c != char.ToUpper(c))
@@ -59,8 +64,9 @@ async Task ReviewStory(string title, string description, string reference)
         description = char.ToUpper(c) + description.Substring(1);
     }
     System.Console.WriteLine("Review your User Story:");
-    System.Console.WriteLine($"Title: {title}");
-    System.Console.WriteLine($"Description: {description} - ref: {reference}");
+    System.Console.WriteLine($"TITLE: {title}");
+    System.Console.WriteLine($"DESCRIPTION: {description} - ref: {reference}");
+    System.Console.WriteLine($"PRIORITY: {priority}");
 
     System.Console.WriteLine("Submit? (Y) for Yes, (N) for No or Exit, (E) for Edit");
     string? x = Console.ReadLine();
@@ -73,29 +79,33 @@ async Task ReviewStory(string title, string description, string reference)
 
     if (suboredit == "edit")
     {
-        finalItem = EditItem(title, description, reference);
+        finalItem = EditItem(title, description, reference, priority);
         title = finalItem[0];
         description = finalItem[1];
         reference = finalItem[2];
-        await ReviewStory(title, description, reference);
+        priority = finalItem[3];
+        await ReviewStory(title, description, reference, priority);
     }
-    var workItemString = $"{title.ToUpper()}: {description} - ref: {reference}";
-    string workItemDescription = $"{description} - Ref: {reference}.";
+
+    description = $"{description} - Ref: {reference}.";
+
     WorkItem workItem = new WorkItem
     {
-        Email = "brett@myemail.com",
         Title = title,
-        Description = workItemDescription
+        Description = description,
+        AssignedTo = "toddmorrell@hotmail.com",
+        Priority = priority
     };
 
     await SubmitWorkItem(workItem);
 }
 
+////// Validating the Submission
 bool ValidateSubmission(string? x, out string suboredit)
 {
     if (String.IsNullOrEmpty(x))
     {
-        System.Console.WriteLine("No option entered. Submit? (y) for Yes, (n) for Exit App, (e) for Edit Title, Description, or Reference");
+        System.Console.WriteLine("No option entered. Submit? (y) for Yes, (n) for Exit App, (e) for Edit Title, Description, Reference, or Priority");
         System.Console.WriteLine("If no option entered, program will exit");
         x = Console.ReadLine();
 
@@ -112,17 +122,17 @@ bool ValidateSubmission(string? x, out string suboredit)
         }
     }
 
-    if (x == "y" || x == "Y")
+    if (x.ToUpper() == "Y")
     {
         suboredit = "submit";
         return true;
     }
-    if (x == "n" || x == "N")
+    if (x.ToUpper() == "N")
     {
         suboredit = "";
         return false;
     }
-    if (x == "e" || x == "E")
+    if (x.ToUpper() == "E")
     {
         suboredit = "edit";
         return true;
@@ -132,8 +142,8 @@ bool ValidateSubmission(string? x, out string suboredit)
     return false;
 }
 
-
-string[] EditItem(string title, string description, string reference)
+////// Editing a Submission Item "title, description, reference"
+string[] EditItem(string title, string description, string reference, string priority)
 {
     System.Console.WriteLine("What would you like to edit?");
     System.Console.WriteLine("(T) for Title, (D) for Description, (R) for Reference");
@@ -157,18 +167,23 @@ string[] EditItem(string title, string description, string reference)
         case "reference":
             reference = EditInput(reference);
             break;
+
+        case "priority":
+            priority = EditInput(priority);
+            break;
     }
 
-    string[] final = { title, description, reference };
+    string[] final = { title, description, reference, priority };
     return final;
 }
 
+////// Validate the input that was edited
 bool ValidateEdit(string? x, out string editType)
 {
     if (String.IsNullOrEmpty(x))
     {
         System.Console.WriteLine("Please select an option for editing:");
-        System.Console.WriteLine("(T) for Title, (D) for Description, (R) for Reference");
+        System.Console.WriteLine("(T) for Title, (D) for Description, (R) for Reference, (P) for Priority");
         System.Console.WriteLine("Or any other character to exit the application");
         x = Console.ReadLine();
 
@@ -187,19 +202,24 @@ bool ValidateEdit(string? x, out string editType)
         return true;
     }
 
-    if (x == "t" || x == "T")
+    if (x.ToUpper() == "T")
     {
         editType = "title";
         return true;
     }
-    if (x == "d" || x == "D")
+    if (x.ToUpper() == "D")
     {
         editType = "description";
         return true;
     }
-    if (x == "r" || x == "R")
+    if (x.ToUpper() == "R")
     {
         editType = "reference";
+        return true;
+    }
+    if (x.ToUpper() == "P")
+    {
+        editType = "priority";
         return true;
     }
 
@@ -207,6 +227,7 @@ bool ValidateEdit(string? x, out string editType)
     return false;
 }
 
+/////// Validate and Replcae the string that was edited
 string EditInput(string input)
 {
     System.Console.WriteLine($"Please enter what you'd like to replace ({input})");
@@ -226,6 +247,8 @@ string EditInput(string input)
     return output;
 }
 
+
+///////// Submit the Work Item
 async Task SubmitWorkItem(WorkItem workItem)
 {
     string uri = "https://localhost:7088/create_work_item";
@@ -260,7 +283,8 @@ async Task SubmitWorkItem(WorkItem workItem)
 
 public class WorkItem
 {
-    public string? Email { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
+    public string? AssignedTo { get; set; }
+    public string? Priority { get; set; }
 }
